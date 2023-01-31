@@ -37,7 +37,6 @@ function active:ready() end
 
 --starts a timer that will call the function 'func' argument (the function arg must have a 'self' argument, EX: function my_object.my_function(this))
 function active:start_timer(time, func)
-	local t = timer:new{}
 	t.maxtime = time
 	t.time = time
 	t.parent = self
@@ -163,16 +162,18 @@ function entity:is_in_group(g)
 end
 
 function entity:add_animation_player()
-	self.anim_player = anim_player:new()
-	self.anim_player.parent = self
-	self.anim_player:add()
+	local tmp = anim_player:new()
+	tmp.parent = self
+	tmp:add()
+	self.anim_player = tmp
 end
 
 animation = 
 { 
 	fps = 0, 
 	start = 2,
-	length = 2
+	length = 2,
+	name = "name"
 }
 
 function animation:new(o)
@@ -188,9 +189,12 @@ anim_player.time = 0
 anim_player.animations = {}
 anim_player.frame = 0
 anim_player.parent = {}
+anim_player.current_animation = {}
 
 function anim_player:update()
 	self.time += 1
+
+	write(#self.animations)
 
 	if self.time >= self.current_animation.fps then
 		self:frame_update()
@@ -212,8 +216,29 @@ function anim_player:new_animation(name, fps, start, length)
 	a.fps = fps
 	a.start = start
 	a.length = length
+	a.name = name
+
+	local tmp =  {}
+	for v in all(self.animations) do
+		print("bruh:" .. v.name)
+		tmp[v.name] = v
+	end
+
+	--for i = 1, #self.animations do
+		--tmp[self.animations[i].name] = self.animations[i]
+	--end
+	tmp[name] = a
 	self.animations[name] = a
+	--self.animations = tmp
 end
+
+--local tmp = {}
+--	for i = 1, #self.animations do
+--		tmp[i] = self.animations[i]
+--	end
+--	tmp[#tmp + 1] = a
+--
+--	self.animations = tmp
 
 function anim_player:set_animation(name)
 	if self.current_animation ~= self.animations[name] then 
@@ -224,12 +249,24 @@ function anim_player:set_animation(name)
 	end
 end
 
+--table functions
+table = {}
+
+function table.move(tb, object, position)
+	for i = 1, #tb do
+		if tb[i] == object then
+			tb[i] = tb[i + position] --sets the current position to the object that is occupying the wanted position
+			tb[i + position] = object --sets the wanted position to the wanted object
+		end
+	end
+end
+
+
 -->8
 --engine/drawing
 camera_x = 0
 camera_y = 0
 background_color = 15
-render = true
 
 local texts = {}
 
@@ -238,13 +275,9 @@ function write(text)
 end
 
 function _update60()
-	if (render) then
-		cls(background_color)
-		map(0, 0, 0, 0 , 64, 64)
-		camera(camera_x, camera_y)
-	else
-		camera(0, 0)
-	end
+	cls(background_color)
+	map(0, 0, 0, 0 , 64, 64)
+	camera(camera_x, camera_y)
 
 	--updates actives
 	for i = 1, #actives do
@@ -286,17 +319,12 @@ camera_borders = {}
 
 current_camera = active:new{}
 current_camera.border = nil
+current_camera:add()
 current_camera.local_x = 0
 current_camera.local_y = 0
 current_camera.shake_x = 0
 current_camera.shake_y = 0
 current_camera.shake_amp = 0
-
-function current_camera:ready()
-	self.shake_x = 0
-	self.shake_y = 0
-	self.shake_amp = 0
-end
 
 function current_camera:set_camera(x, y)
 	camera_x = x - 64 + self.shake_x
@@ -316,9 +344,6 @@ function current_camera:set_camera(x, y)
 	camera_y += self.shake_y
 
 	--print(self.shake_y, player.x, player.y - 32)
-	--write(self.shake_y)
-	--write(self.shake_x)
-	--write('bruh ' .. self.shake_amp)
 end
 
 function current_camera:shake(amp)
@@ -356,8 +381,8 @@ function camera_border_start:ready()
 end
 
 function camera_border_start:get_size()
-	local x = self.x / 8
-	local y = self.y / 8
+	x = self.x / 8
+	y = self.y / 8
 	for i = 1, 256 do
 		local t = mget(i + x, y)
 		if t == 15 or t == 14 then
@@ -477,11 +502,8 @@ player.can_shoot = true
 player.up = false
 player.invincible = false
 player.groups = { 'player' }
-player:add_animation_player()
-player.anim_player:new_animation('p_idle', 20, 64, 2)
-player.anim_player:new_animation('run', 7, 66, 2)
-player.anim_player:new_animation('air', 1, 67, 1)
-player.anim_player:set_animation('p_idle')
+player.just_pressed = false
+player.charge = 0
 
 --addsplayer
 --player:add()
@@ -490,15 +512,20 @@ gun = entity:new{}
 gun.sprite = 80
 
 function player:ready()
+	self:add_animation_player()
+	--self.anim_player:new_animation('idle', 20, 64, 2)
+	self.anim_player:new_animation('run', 7, 66, 2)
+	self.anim_player:new_animation('air', 1, 67, 1)
+	self.anim_player:set_animation('idle')
 	gun:add()
-	invincible = false
-	player.hurtout(self)
-	player.flashout(self)
-	player.shoot_timeout(self)
-	current_camera:add()
 end
 
 function player:update()
+	write('')
+	--write('count: ' .. #self.anim_player.animations)
+	for v in all(self.anim_player.animations) do
+		write('asdas: '.. v.name)
+	end
 	current_camera:set_camera(self.x + self.w / 2, self.y + self.h / 2)
 
 	gun.x = self.x
@@ -517,7 +544,7 @@ function player:update()
 		self.flip_h = true
 		self.anim_player:set_animation('run')
 	else
-		self.anim_player:set_animation('p_idle')
+		self.anim_player:set_animation('idle')
 	end
 
 	if btn(2) then
@@ -549,27 +576,23 @@ function player:update()
 	end
 
 	self:move(self.spd_x, self.spd_y)
-	
-	if btn(5) and self.can_shoot then
-		local b = p_bullet:new{}
-		b:add()
-		b.x = self.x
-		b.y = self.y
-		b.up = self.up
 
-		self:start_timer(6, player.shoot_timeout)
-		self.can_shoot = false
+	if btn(5) then
+		self.charge += 1
 
-		sfx(0)
-
-		if self.flip_h and not self.up then
-			b.speed *= -1
-			b.flip_h = self.flip_h
+		if self.charge == 10 then
+			sfx(6)
 		end
-		
-		if self.up then
-			b.sprite += 1
+
+		if self.can_shoot and self.just_pressed then
+			self:shoot(p_bullet, 0)
 		end
+	else
+		self.just_pressed = true
+		if self.charge >= 40 then
+			self:shoot(p_missile, 10)
+		end
+		player.charge = 0
 	end
 
 	local e = self:iscoll('hurt')
@@ -586,6 +609,31 @@ function player:update()
 	end
 end
 
+function player:shoot(new_bullet, sound)
+	local b = new_bullet:new{}
+	b:add()
+	b.x = self.x
+	b.y = self.y
+	b.up = self.up
+
+	self:start_timer(6, player.shoot_timeout)
+	self.can_shoot = false
+	self.just_pressed = false
+
+	sfx(sound)
+
+	if self.flip_h and not self.up then
+		b.speed *= -1
+		b.flip_h = self.flip_h
+	end
+	
+	if self.up then
+		b.anim_player:set_animation("up")
+	else
+		b.anim_player:set_animation("idle")
+	end
+end
+
 function player.hurtout(o)
 	o.invincible = false
 end
@@ -594,9 +642,7 @@ function player.shoot_timeout(o)
 	o.can_shoot = true
 end
 
-function player:kill()
-	gameoverscreen()
-end
+function player:kill() end
 
 --bullet
 p_bullet = entity:new{}
@@ -609,6 +655,13 @@ p_bullet.tag = 'bullet'
 p_bullet.up = false
 p_bullet.groups = { 'bullet' }
 
+function p_bullet:ready()
+	self:add_animation_player()
+	self.anim_player:new_animation("sidle", 10, 2, 1)
+	self.anim_player:new_animation("up", 10, 3, 1)
+	self.anim_player:set_animation("sidle")
+end
+
 function p_bullet:update()
 	if (self.up) then
 		self.y -= self.speed
@@ -619,13 +672,45 @@ function p_bullet:update()
 	
 	local ent = self:iscoll('enemy')
 	if ent then
-		self:destroy()
+		self:kill()
 		ent:hurt(self.damage)
 	end
 	
 	if self.timer >= self.maxtime or self:tilecoll(0, 0) then
-		self:destroy()
+		self:kill()
 	end
+end
+
+function p_bullet:kill()
+	self:destroy()
+end
+
+p_missile = p_bullet:new{}
+p_missile.sprite = 11
+p_missile.speed = 3
+p_missile.maxtime = 60
+p_missile.damage = 10
+
+function p_missile:ready()
+	self:add_animation_player()
+	self.anim_player:new_animation("sidle", 6, 96, 2)
+	self.anim_player:new_animation("up", 6, 98, 2)
+	self.anim_player:set_animation("idle")
+
+end
+
+function p_missile:kill()
+	e = explosion:new{}
+	e.x = self.x
+	e.y = self.y 
+	e:add()
+	sfx(9)
+	self:destroy()
+
+	local t = turret:new{}
+	t.x = self.x
+	t.y = self.y
+	t:add()
 end
 
 -->8
@@ -678,7 +763,7 @@ end
 function turret:update()
 	--shoot
 	if (self.can_shoot and self:player_distance() <= 48) then
-		local t = turret_bullet:new{}
+		t = turret_bullet:new{}
 		t.x = self.x
 		t.y = self.y
 		t.angle = self:player_angle(0, 0)--atan2(player.x - self.x, player.y - self.y)
@@ -708,10 +793,14 @@ bomber.can_shoot = true
 bomber.w = 16
 bomber.h = 16
 bomber.hp = 25
-bomber.max_hp = 25 
+bomber.max_hp = 25
+
+
 
 function bomber:update()
-	if self.can_shoot then
+	local distance = self:player_distance()
+
+	if self.can_shoot and distance <= 48 then
 		self.can_shoot = false
 		local m = missile:new{}
 		m.angle = self:player_angle(0, 120)
@@ -719,10 +808,12 @@ function bomber:update()
 		m.y = self.y
 		m:add()
 
+		
+
 		self:start_timer(60, bomber.shootout)
 	end
 
-	if self:player_distance() <= 48 then
+	if distance <= 48 then
 		local a = self:player_angle(0, -24)
 		self:move(cos(a) * 0.3, sin(a) * 0.2)
 	end
@@ -768,9 +859,12 @@ function stretcher:ready()
 		n.parent = self
 		n:add()
 		b[i] = n
+		table.move(entities, n, -1)
 	end
 
 	self.necks = b
+
+	--table.move(entities, self, self.neck_count)
 end
 
 function stretcher:attack()
@@ -880,7 +974,7 @@ end
 
 function missile:kill()
 	sfx(5)
-	local e = explosion:new{}
+	e = explosion:new{}
 	e.x = self.x
 	e.y = self.y 
 	e:add()
@@ -904,52 +998,50 @@ function explosion:update()
 	end
 end
 -->8
---spawnmanager
+--start map
+
+for i = 0, 64 do
+	for j = 0, 64 do
+		c = mget(i, j)
+		a = nil
 	
-function spawnents()
-	for i = 0, 64 do
-		for j = 0, 64 do
-			local c = mget(i, j)
-			local a = nil
+		if c == 1 then
+			--a = player:new{}
+			player:add()
+			player.x = i * 8
+			player.y = j * 8
+			mset(i, j, 0)
+		elseif c == 4 then
+			a = alien:new{}
+		elseif c == 5 then
+			a = turret:new{}
+		elseif c == 129 then
+			a = security_boss:new{}
+		elseif c == 14 then
+			a = camera_border_start:new{}
+		elseif c == 15 then
+			--a = camera_border_end:new{}
+		elseif c == 128 then
+			a = missile:new{}
+		elseif c == 160 then
+			a = bomber:new{}
+		elseif c == 163 then
+			a = stretcher:new{}
+		end
 		
-			if c == 1 then
-				player:add()
-				player.x = i * 8
-				player.y = j * 8
-				mset(i, j, 0)
-			elseif c == 4 then
-				a = alien:new{}
-			elseif c == 5 then
-				a = turret:new{}
-			elseif c == 129 then
-				a = security_boss:new{}
-			elseif c == 14 then
-				a = camera_border_start:new{}
-			elseif c == 15 then
-				--a = camera_border_end:new{}
-			elseif c == 128 then
-				a = missile:new{}
-			elseif c == 160 then
-				a = bomber:new{}
-			elseif c == 163 then
-				a = stretcher:new{}
-			end
-			
-			if a ~= nil then 
-				for x = 0, a.sprite_w - 1 do
-					for y = 0, a.sprite_h - 1 do
-						mset(i + x, j + y, 0)
-					end
+		if a ~= nil then 
+			for x = 0, a.sprite_w - 1 do
+				for y = 0, a.sprite_h - 1 do
+					mset(i + x, j + y, 0)
 				end
-				a.x = i * 8
-				a.y = j * 8
-				a:add()
 			end
+			a.x = i * 8
+			a.y = j * 8
+			a:add()
 		end
 	end
 end
 
-spawnents()
 -->8
 --ui
 health_ui = active:new{}
@@ -972,52 +1064,6 @@ function health_ui:update()
 	end
 
 	rect(health_ui.x, health_ui.y, health_ui.x + 24, health_ui.y + 8, 0)
-end
--->8
---screens
-screen = active:new{}
-
-function screen:ready()
-	self.i = 0
-	self.c = 0
-	self.s1 = 40
-	self.s2 = 110
-	self.s3 = 140
-	self.s4 = 200
-end
-
-function screen:update()
-	self.i += 1
-	
-	if (self.i < self.s1) then return end
-	
-	cls(self.c)	
-	self.c += 0.08
-	
-	if (self.i < self.s2) then return end
-	
-	cls(0)
-	
-	if (self.i < self.s3) then return end
-	
-	print("game over!", 44, 60, 7)
-	
-	if (self.i < self.s4) then return end
-	
-	print("press x to try again!", 22, 68, 7)
-	if (btn(4)) then
-		run()
-	end
-end
-
---game over screen
-function gameoverscreen()
-	render = false
-	for i = 1, #actives do
-		actives[i]:destroy()
-	end
-	cls(0)
-	screen:add()
 end
 __gfx__
 78000087abbbbbbc000000000009800000cccc0000611600000000000000000000000000700000077000000700000000000000000000000099999999cccccccc
@@ -1068,14 +1114,14 @@ b3bb3b3b3bb3b3b3b3bb3b3b00000000000000000000000000000000000000000000000000000000
 000dd0100000d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000820000000002200000099000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+60000000688200000028820000988900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+62222820688882900081180000288200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+86111282968888890021120000888800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+86111282968888890021120002888820000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+62222820688882900021120008888880000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+60000000688200000026620028866882000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000820000000668866086699668000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1148,4 +1194,8 @@ __sfx__
 000a00000f651066601366001650020501660000000026000f6010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000200001005024350223501f0501d050000001715019150120500655003550005500040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000200003f6503e6503c6503b6503a6503f6503f650232503e65021250202501f2501e2501d25034650336503265032650316503665035650112500e2500e2501865018650176501665019650126500c65005650
-0001000000000000001b05023050280502a0502e05030050000003305033050340503405000000310502f0502b05025050200501e0501d0501d0501e050000002105024050000002a0502f050000000000000000
+0003000003450034500945003450044500745005450034500c450084500345009450124500b4500c45009450104500b450164500c4501345014450194501545018450214501e4501d45024450283502b35034350
+000100001c35014450115501735014450144501035014450144501445015350144501c5501445014450163501445012350144501b550144501445013350144501445014450144501b5500c350144501445014450
+00010000164501c450214501c450154501d45016450154501d4501d450154501e450194501e45024450144501f4501f450144502045014450204501a4502045016450174501b4501b4501b4501d4502045020450
+0001000000000306503465038650380503b6502c050386503465031650206502665024650270501f650160501c65019650166501565010050116500f6500e6500d650120500e650106501c050166501965016050
+000100003645033450324502e4502c4502a450284502545023450204501e4501b4501845014450114500e4500c4500a4500745005450034500145000450000000000000000000000000000000000000000000000
