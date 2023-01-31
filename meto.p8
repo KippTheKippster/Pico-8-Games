@@ -321,7 +321,11 @@ camera_borders = {}
 current_camera = active:new{}
 current_camera.border = nil
 <<<<<<< HEAD
+<<<<<<< HEAD
 current_camera:add()
+=======
+//current_camera:add()
+>>>>>>> parent of 847453f (Remove debug lines from meto)
 =======
 //current_camera:add()
 >>>>>>> parent of 847453f (Remove debug lines from meto)
@@ -350,6 +354,12 @@ function current_camera:set_camera(x, y)
 
 	--print(self.shake_y, player.x, player.y - 32)
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+	write(self.shake_y)
+	write(self.shake_x)
+	write('bruh ' .. self.shake_amp)
+>>>>>>> parent of 847453f (Remove debug lines from meto)
 =======
 	write(self.shake_y)
 	write(self.shake_x)
