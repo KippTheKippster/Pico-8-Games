@@ -38,6 +38,7 @@ function active:ready() end
 --starts a timer that will call the function 'func' argument (the function arg must have a 'self' argument, EX: function my_object.my_function(this))
 function active:start_timer(time, func)
 	t = timer:new{}
+	local t = timer:new{}
 	t.maxtime = time
 	t.time = time
 	t.parent = self
