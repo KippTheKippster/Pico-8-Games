@@ -190,8 +190,8 @@ function _init()
 	--createface(obj.face,ivert,{0,0},{64,64},0.25,0.25)
 end
 
-createsphere(13,64,vert1,0)
---createface(obj.face,vert,{16,16},{64,64},0.25,0.25)
+--createsphere(13,64,vert1,0)
+createface(obj.face,vert,{160,16},{64,64},0.25,0.25)
 
 function _update60()
 	cls()
